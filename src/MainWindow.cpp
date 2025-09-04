@@ -51,24 +51,28 @@ MainComponent::MainComponent()
                                  juce::File{}, 
                                  "*.wav;*.mp3;*.flac;*.aiff");
         
-        if (chooser.browseForFileToOpen())
-        {
-            auto file = chooser.getResult();
-            bool success = audioEngine->loadAudioFile(file);
-            
-            if (success)
+        chooser.launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
+            [this](const juce::FileChooser& fc)
             {
-                juce::AlertWindow::showMessageBox(juce::AlertWindow::InfoIcon,
-                                                 "Success",
-                                                 "Audio file loaded: " + file.getFileName());
-            }
-            else
-            {
-                juce::AlertWindow::showMessageBox(juce::AlertWindow::WarningIcon,
-                                                 "Error",
-                                                 "Failed to load audio file (not yet implemented)");
-            }
-        }
+                auto file = fc.getResult();
+                if (file.existsAsFile())
+                {
+                    bool success = audioEngine->loadAudioFile(file);
+                    
+                    if (success)
+                    {
+                        juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::InfoIcon,
+                                                             "Success",
+                                                             "Audio file loaded: " + file.getFileName());
+                    }
+                    else
+                    {
+                        juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon,
+                                                             "Error",
+                                                             "Failed to load audio file (not yet implemented)");
+                    }
+                }
+            });
     };
     addAndMakeVisible(loadFileButton);
 

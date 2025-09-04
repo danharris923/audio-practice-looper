@@ -2,7 +2,7 @@
 
 #include <juce_gui_basics/juce_gui_basics.h>
 
-#include "MainWindow.h"
+#include "MainWindow_minimal.h"
 
 class AudioPracticeLooperApp : public juce::JUCEApplication
 {
@@ -11,12 +11,12 @@ public:
 
     const juce::String getApplicationName() override
     {
-        return ProjectInfo::projectName;
+        return "Audio Practice Looper";
     }
 
     const juce::String getApplicationVersion() override
     {
-        return ProjectInfo::versionString;
+        return "1.0.0";
     }
 
     bool moreThanOneInstanceAllowed() override

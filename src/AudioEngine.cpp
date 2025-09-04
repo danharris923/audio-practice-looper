@@ -225,6 +225,32 @@ void AudioEngine::setLoopEnabled(bool enabled)
     }
 }
 
+// Getter methods for tests
+float AudioEngine::getTempoRatio() const
+{
+    return tempoRatio.load();
+}
+
+int AudioEngine::getPitchSemitones() const
+{
+    return pitchSemitones.load();
+}
+
+double AudioEngine::getLoopInSeconds() const
+{
+    return loopInSeconds.load();
+}
+
+double AudioEngine::getLoopOutSeconds() const
+{
+    return loopOutSeconds.load();
+}
+
+bool AudioEngine::getLoopEnabled() const
+{
+    return loopEnabled.load();
+}
+
 void AudioEngine::updateParameters()
 {
     // Update Rubber Band parameters if needed
@@ -242,15 +268,14 @@ void AudioEngine::updateParameters()
     }
 }
 
-void AudioEngine::audioDeviceIOCallbackWithContext(
+void AudioEngine::audioDeviceIOCallback(
     const float* const* inputChannelData,
     int numInputChannels,
     float* const* outputChannelData,
     int numOutputChannels,
-    int numSamples,
-    const juce::AudioIODeviceCallbackContext& context)
+    int numSamples)
 {
-    juce::ignoreUnused(inputChannelData, numInputChannels, context);
+    juce::ignoreUnused(inputChannelData, numInputChannels);
 
     // Update parameters smoothly
     updateParameters();

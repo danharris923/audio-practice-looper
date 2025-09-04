@@ -13,8 +13,7 @@
 #include "Utils/LockFreeRingBuffer.h"
 #include "Utils/ParameterSmoother.h"
 
-class AudioEngine : public juce::AudioIODeviceCallback,
-                   public juce::AudioProcessorGraph::AudioGraphIOProcessor::Callback
+class AudioEngine : public juce::AudioIODeviceCallback
 {
 public:
     AudioEngine();
@@ -36,23 +35,27 @@ public:
     // Parameter control
     void setTempoRatio(float ratio);
     void setPitchSemitones(int semitones);
+    float getTempoRatio() const;
+    int getPitchSemitones() const;
     
     // Loop control
     void setLoopInSeconds(double seconds);
     void setLoopOutSeconds(double seconds);
     void setLoopEnabled(bool enabled);
+    double getLoopInSeconds() const;
+    double getLoopOutSeconds() const;
+    bool getLoopEnabled() const;
 
     // Analysis control
     AnalysisResult getAnalysisResults() const;
     void setAnalysisEnabled(bool enabled);
 
     // AudioIODeviceCallback implementation
-    void audioDeviceIOCallbackWithContext(const float* const* inputChannelData,
-                                        int numInputChannels,
-                                        float* const* outputChannelData,
-                                        int numOutputChannels,
-                                        int numSamples,
-                                        const juce::AudioIODeviceCallbackContext& context) override;
+    void audioDeviceIOCallback(const float* const* inputChannelData,
+                              int numInputChannels,
+                              float* const* outputChannelData,
+                              int numOutputChannels,
+                              int numSamples) override;
 
     void audioDeviceAboutToStart(juce::AudioIODevice* device) override;
     void audioDeviceStopped() override;

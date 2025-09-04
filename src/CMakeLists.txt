@@ -1,22 +1,11 @@
 set(TARGET_NAME AudioPracticeLooper)
 
-# Source files
+# Source files - With simple audio engine
 set(SOURCES
     main.cpp
     App.cpp
-    MainWindow.cpp
-    AudioEngine.cpp
-    AudioFileSource.cpp
-    RubberBandNode.cpp
-    EQNode.cpp
-    AnalysisWorker.cpp
-    WaveformView.cpp
-    TransportBar.cpp
-    LoopControls.cpp
-    SystemAudioCapture.cpp
-    ExportEngine.cpp
-    ExportDialog.cpp
-    DeviceSelector.cpp
+    MainWindow_minimal.cpp
+    SimpleAudioEngine.cpp  # Simple JUCE-only audio engine
     Utils/ParameterSmoother.h  # Header-only
 )
 
@@ -87,7 +76,7 @@ if(TARGET FFmpeg::FFmpeg)
     target_link_libraries(${TARGET_NAME} PRIVATE FFmpeg::FFmpeg)
 endif()
 
-# Platform-specific libraries
+# Platform-specific libraries - Minimal set
 if(WIN32)
     target_link_libraries(${TARGET_NAME} PRIVATE
         winmm
@@ -97,14 +86,10 @@ if(WIN32)
         comctl32
         comdlg32
         gdi32
-        rpcrt4
-        wininet
-        version
-        ws2_32
-        # WASAPI libraries for system audio capture
-        mmdevapi
-        audioclient
-        propsys
+        # Removed WASAPI libraries for minimal build
+        # mmdevapi
+        # audioclient  
+        # propsys
     )
 elseif(UNIX AND NOT APPLE)
     target_link_libraries(${TARGET_NAME} PRIVATE

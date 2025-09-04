@@ -91,6 +91,22 @@ public:
     {
         return capacity_ - available() - 1;
     }
+    
+    // Compatibility methods for tests
+    size_t getSize() const
+    {
+        return capacity_ - 1;
+    }
+    
+    size_t getNumAvailable() const
+    {
+        return available();
+    }
+    
+    size_t getFreeSpace() const
+    {
+        return space();
+    }
 
 private:
     const size_t capacity_;
