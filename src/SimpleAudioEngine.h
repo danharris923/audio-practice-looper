@@ -78,6 +78,13 @@ public:
     bool isRecording() const;
     void saveRecording(const juce::File& outputFile);
     
+    // Pedal-style loop recording workflow
+    enum class LoopRecordState { Idle, Recording, Looping };
+    void toggleLoopRecord();  // 3-state toggle: idle -> recording -> looping -> idle
+    LoopRecordState getLoopRecordState() const;
+    void setLoopOverlapMs(int milliseconds);
+    int getLoopOverlapMs() const;
+    
     // Input monitoring
     void setInputMonitoring(bool enabled);
     bool getInputMonitoring() const;
@@ -135,6 +142,12 @@ private:
     std::atomic<double> bpm{120.0};
     std::vector<double> beatPositions;
     juce::CriticalSection beatAnalysisLock;
+    
+    // Pedal-style loop recording state
+    std::atomic<LoopRecordState> loopRecordState{LoopRecordState::Idle};
+    std::atomic<int> loopOverlapMs{100};  // Default 100ms overlap for seamless loops
+    double recordingStartTime = 0.0;
+    double recordingEndTime = 0.0;
     
     void setupAudioSources();
     void checkLoopPosition();

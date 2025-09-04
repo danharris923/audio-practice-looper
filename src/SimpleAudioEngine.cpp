@@ -662,3 +662,65 @@ std::vector<double> SimpleAudioEngine::getBeatPositions() const
     juce::ScopedLock lock(beatAnalysisLock);
     return beatPositions;
 }
+
+// Pedal-style loop recording implementation
+void SimpleAudioEngine::toggleLoopRecord()
+{
+    LoopRecordState currentState = loopRecordState.load();
+    
+    switch (currentState)
+    {
+        case LoopRecordState::Idle:
+            // Start recording from input
+            recordingStartTime = transportSource ? transportSource->getCurrentPosition() : 0.0;
+            startRecording();
+            loopRecordState.store(LoopRecordState::Recording);
+            break;
+            
+        case LoopRecordState::Recording:
+        {
+            // Stop recording and immediately start looping
+            stopRecording();
+            recordingEndTime = transportSource ? transportSource->getCurrentPosition() : 0.0;
+            
+            // Set loop points with overlap
+            double overlapSeconds = loopOverlapMs.load() / 1000.0;
+            loopStartSeconds.store(recordingStartTime);
+            loopEndSeconds.store(recordingEndTime + overlapSeconds);
+            hasAPoint.store(true);
+            hasBPoint.store(true);
+            loopEnabled.store(true);
+            
+            // Jump to loop start
+            if (transportSource)
+            {
+                transportSource->setPosition(recordingStartTime);
+                transportSource->start();
+            }
+            
+            loopRecordState.store(LoopRecordState::Looping);
+            break;
+        }
+            
+        case LoopRecordState::Looping:
+            // Clear loop and continue with source
+            clearLoop();
+            loopRecordState.store(LoopRecordState::Idle);
+            break;
+    }
+}
+
+SimpleAudioEngine::LoopRecordState SimpleAudioEngine::getLoopRecordState() const
+{
+    return loopRecordState.load();
+}
+
+void SimpleAudioEngine::setLoopOverlapMs(int milliseconds)
+{
+    loopOverlapMs.store(juce::jlimit(0, 300, milliseconds));
+}
+
+int SimpleAudioEngine::getLoopOverlapMs() const
+{
+    return loopOverlapMs.load();
+}

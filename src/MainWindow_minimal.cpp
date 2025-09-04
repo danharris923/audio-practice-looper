@@ -401,6 +401,40 @@ MainComponent::MainComponent()
     statusLabel.setJustificationType(juce::Justification::centred);
     statusLabel.setFont(juce::Font(14.0f));
     addAndMakeVisible(statusLabel);
+    
+    // Toggle pedal view button
+    togglePedalViewButton.setButtonText("PEDAL VIEW");
+    togglePedalViewButton.onClick = [this]()
+    {
+        pedalViewEnabled = !pedalViewEnabled;
+        
+        if (pedalViewEnabled)
+        {
+            // Create and show pedal component
+            if (!pedalComponent)
+            {
+                pedalComponent = std::make_unique<PedalComponent>(audioEngine.get());
+                addAndMakeVisible(pedalComponent.get());
+            }
+            pedalComponent->setVisible(true);
+            togglePedalViewButton.setButtonText("MIXER VIEW");
+            statusLabel.setText("Boss RC-style pedal mode", juce::dontSendNotification);
+        }
+        else
+        {
+            // Hide pedal component
+            if (pedalComponent)
+            {
+                pedalComponent->setVisible(false);
+            }
+            togglePedalViewButton.setButtonText("PEDAL VIEW");
+            statusLabel.setText("Mixer view", juce::dontSendNotification);
+        }
+        
+        resized();
+    };
+    styleButton(togglePedalViewButton, juce::Colour(0xff880088));
+    addAndMakeVisible(togglePedalViewButton);
 }
 
 MainComponent::~MainComponent()
@@ -439,13 +473,53 @@ void MainComponent::resized()
 {
     auto bounds = getLocalBounds();
     
-    // Top title bar (like DAW title) with settings menu
+    // Top title bar (like DAW title) with settings menu and view toggle
     auto titleArea = bounds.removeFromTop(40);
     settingsMenuButton.setBounds(titleArea.removeFromRight(40).reduced(5));
+    togglePedalViewButton.setBounds(titleArea.removeFromRight(80).reduced(5));
     titleLabel.setBounds(titleArea);
     
     // Main content area
     bounds.reduce(10, 5);
+    
+    // Check if pedal view is enabled
+    if (pedalViewEnabled && pedalComponent)
+    {
+        // In pedal view, show the pedal component prominently
+        auto pedalBounds = bounds.removeFromTop(300);
+        pedalComponent->setBounds(pedalBounds);
+        
+        // Show minimal file controls below
+        auto fileArea = bounds.removeFromTop(60);
+        loadFileButton.setBounds(fileArea.removeFromLeft(100).reduced(5));
+        fileStatusLabel.setBounds(fileArea.reduced(5));
+        
+        // Hide other components in pedal view
+        fileGroup.setVisible(false);
+        transportGroup.setVisible(false);
+        effectsGroup.setVisible(false);
+        loopGroup.setVisible(false);
+        recordingGroup.setVisible(false);
+        waveformArea.setVisible(false);
+        
+        // Keep status bar visible
+        statusLabel.setBounds(bounds.removeFromBottom(30));
+        return;
+    }
+    
+    // Normal view - show all controls
+    if (pedalComponent)
+    {
+        pedalComponent->setVisible(false);
+    }
+    
+    // Make sure all normal controls are visible
+    fileGroup.setVisible(true);
+    transportGroup.setVisible(true);
+    effectsGroup.setVisible(true);
+    loopGroup.setVisible(true);
+    recordingGroup.setVisible(true);
+    waveformArea.setVisible(true);
     
     // File section at top (like DAW file/project area)
     auto fileArea = bounds.removeFromTop(80);

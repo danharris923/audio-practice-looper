@@ -6,6 +6,7 @@ set(SOURCES
     App.cpp
     MainWindow_minimal.cpp
     SimpleAudioEngine.cpp  # Simple JUCE-only audio engine
+    PedalComponent.cpp      # Boss RC-style pedal interface
     Utils/ParameterSmoother.h  # Header-only
 )
 

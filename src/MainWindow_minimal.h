@@ -2,6 +2,7 @@
 
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "SimpleAudioEngine.h"
+#include "PedalComponent.h"
 
 class MainComponent;
 
@@ -94,6 +95,11 @@ private:
     
     // Status
     juce::Label statusLabel;
+    
+    // Pedal component (Boss RC style)
+    std::unique_ptr<PedalComponent> pedalComponent;
+    juce::TextButton togglePedalViewButton;
+    bool pedalViewEnabled = false;
     
     // Audio engine
     std::unique_ptr<SimpleAudioEngine> audioEngine;
