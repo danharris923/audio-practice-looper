@@ -35,6 +35,10 @@ private:
     bool playLED = false;
     juce::Colour ledColor = juce::Colours::darkgrey;
     
+    // Digital display
+    juce::Label digitalDisplay;
+    juce::Component displayArea;
+    
     // Smaller control buttons (like Boss pedals)
     juce::TextButton tapTempoButton;
     juce::TextButton undoRedoButton;
@@ -43,8 +47,10 @@ private:
     // Timer callback for LED animation
     void timerCallback() override;
     void updateLEDState();
+    void updateDigitalDisplay();
     void paintMetalPedalBackground(juce::Graphics& g);
     void paintLED(juce::Graphics& g, juce::Rectangle<int> bounds, juce::Colour color, bool isOn);
+    void paintDigitalDisplay(juce::Graphics& g, juce::Rectangle<int> bounds);
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PedalComponent)
 };

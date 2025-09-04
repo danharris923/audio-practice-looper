@@ -103,7 +103,18 @@ PedalComponent::PedalComponent(SimpleAudioEngine* engine) : audioEngine(engine)
     };
     addAndMakeVisible(stopButton);
     
-    // Start timer for LED updates
+    // Digital display setup
+    digitalDisplay.setText("READY", juce::dontSendNotification);
+    digitalDisplay.setJustificationType(juce::Justification::centred);
+    digitalDisplay.setColour(juce::Label::textColourId, juce::Colour(0xff00ff00)); // Bright green like ytLooper
+    digitalDisplay.setColour(juce::Label::backgroundColourId, juce::Colour(0xff000000));
+    digitalDisplay.setFont(juce::Font("Courier New", 16.0f, juce::Font::bold)); // Monospace for digital look
+    addAndMakeVisible(digitalDisplay);
+    
+    displayArea.setPaintingIsUnclipped(true);
+    addAndMakeVisible(displayArea);
+    
+    // Start timer for LED updates and display refresh
     startTimer(100);
 }
 
@@ -116,36 +127,69 @@ void PedalComponent::paint(juce::Graphics& g)
 {
     paintMetalPedalBackground(g);
     
-    // Paint LED indicators
-    int ledY = getHeight() * 0.15;
-    int ledSize = 12;
-    
-    // Record LED (left)
-    juce::Rectangle<int> recLedBounds(getWidth() * 0.3 - ledSize/2, ledY, ledSize, ledSize);
-    paintLED(g, recLedBounds, juce::Colours::red, recordLED);
-    
-    // Play LED (right) 
-    juce::Rectangle<int> playLedBounds(getWidth() * 0.7 - ledSize/2, ledY, ledSize, ledSize);
-    paintLED(g, playLedBounds, juce::Colours::green, playLED);
-    
-    // Boss logo style text
+    // Boss logo and branding (top section)
     g.setColour(juce::Colours::white);
-    g.setFont(juce::Font(16.0f, juce::Font::bold));
-    g.drawText("LOOP STATION", getLocalBounds().removeFromTop(30), juce::Justification::centred);
+    g.setFont(juce::Font("Arial", 20.0f, juce::Font::bold));
+    g.drawText("BOSS", juce::Rectangle<int>(20, 15, 60, 25), juce::Justification::left);
     
-    // Model number
-    g.setFont(juce::Font(11.0f));
-    g.drawText("RC-1", juce::Rectangle<int>(10, 35, 50, 20), juce::Justification::left);
+    // Loop Station text (centered)
+    g.setFont(juce::Font("Arial", 14.0f, juce::Font::plain));
+    g.drawText("Loop Station", getLocalBounds().withY(18).withHeight(20), juce::Justification::centred);
+    
+    // Model RC-1 (top right)
+    g.setFont(juce::Font("Arial", 16.0f, juce::Font::bold));
+    g.drawText("RC-1", juce::Rectangle<int>(getWidth() - 70, 15, 50, 25), juce::Justification::right);
+    
+    // Paint digital display area (like ytLooper extension)
+    auto displayBounds = displayArea.getBounds();
+    if (!displayBounds.isEmpty())
+    {
+        paintDigitalDisplay(g, displayBounds);
+    }
+    
+    // Paint single LED indicator (Boss RC-1 has one LED)
+    int ledSize = 8;
+    int ledX = displayBounds.getRight() + 20;
+    int ledY = displayBounds.getY() + displayBounds.getHeight() / 2 - ledSize / 2;
+    juce::Rectangle<int> ledBounds(ledX, ledY, ledSize, ledSize);
+    
+    // LED color based on state
+    juce::Colour ledColor = juce::Colours::darkgrey;
+    bool ledOn = false;
+    
+    if (recordLED)
+    {
+        ledColor = juce::Colours::red;
+        ledOn = true;
+    }
+    else if (playLED)
+    {
+        ledColor = juce::Colours::green;
+        ledOn = true;
+    }
+    
+    paintLED(g, ledBounds, ledColor, ledOn);
+    
+    // Input/Output labels (like on real RC-1)
+    g.setColour(juce::Colour(0xff333333));
+    g.setFont(juce::Font("Arial", 9.0f, juce::Font::plain));
+    g.drawText("INPUT", juce::Rectangle<int>(30, getHeight() - 25, 40, 15), juce::Justification::left);
+    g.drawText("OUTPUT", juce::Rectangle<int>(getWidth() - 70, getHeight() - 25, 50, 15), juce::Justification::right);
 }
 
 void PedalComponent::resized()
 {
     auto bounds = getLocalBounds();
     
-    // Top area for LEDs and title
-    bounds.removeFromTop(60);
+    // Top area for branding
+    bounds.removeFromTop(50);
     
-    // Knobs area (top row)
+    // Digital display area (like ytLooper extension)
+    auto displayBounds = bounds.removeFromTop(60);
+    displayArea.setBounds(displayBounds.reduced(40, 10));
+    digitalDisplay.setBounds(displayArea.getBounds().reduced(5));
+    
+    // Knobs area (below display)
     auto knobArea = bounds.removeFromTop(80);
     int knobSize = 50;
     int knobSpacing = getWidth() / 4;
@@ -189,7 +233,8 @@ void PedalComponent::resized()
 void PedalComponent::timerCallback()
 {
     updateLEDState();
-    repaint(); // Repaint for LED animation
+    updateDigitalDisplay();
+    repaint(); // Repaint for LED animation and display updates
 }
 
 void PedalComponent::updateLEDState()
@@ -221,36 +266,125 @@ void PedalComponent::updateLEDState()
     }
 }
 
+void PedalComponent::updateDigitalDisplay()
+{
+    if (!audioEngine)
+    {
+        digitalDisplay.setText("NO ENGINE", juce::dontSendNotification);
+        return;
+    }
+    
+    auto state = audioEngine->getLoopRecordState();
+    juce::String displayText;
+    
+    switch (state)
+    {
+        case SimpleAudioEngine::LoopRecordState::Idle:
+            if (audioEngine->isFileLoaded())
+            {
+                // Show current position like ytLooper
+                double position = audioEngine->getPosition();
+                double duration = audioEngine->getDuration();
+                int mins = (int)(position / 60.0);
+                int secs = (int)(position - mins * 60.0);
+                int totalMins = (int)(duration / 60.0);
+                int totalSecs = (int)(duration - totalMins * 60.0);
+                displayText = juce::String::formatted("%02d:%02d / %02d:%02d", mins, secs, totalMins, totalSecs);
+            }
+            else
+            {
+                displayText = "LOAD FILE";
+            }
+            break;
+            
+        case SimpleAudioEngine::LoopRecordState::Recording:
+            displayText = "RECORDING...";
+            break;
+            
+        case SimpleAudioEngine::LoopRecordState::Looping:
+        {
+            // Show loop info like ytLooper
+            double loopStart = audioEngine->getLoopStart();
+            double loopEnd = audioEngine->getLoopEnd();
+            double loopLength = loopEnd - loopStart;
+            int mins = (int)(loopLength / 60.0);
+            int secs = (int)(loopLength - mins * 60.0);
+            displayText = juce::String::formatted("LOOP %02d:%02d", mins, secs);
+            break;
+        }
+    }
+    
+    digitalDisplay.setText(displayText, juce::dontSendNotification);
+}
+
 void PedalComponent::paintMetalPedalBackground(juce::Graphics& g)
 {
-    // Boss pedal style metal background
+    // Boss RC-1 style brushed metal background (more realistic)
     juce::Rectangle<float> bounds = getLocalBounds().toFloat();
     
-    // Main metal body color
-    juce::Colour metalBase(0xff8b0000);  // Dark red like Boss RC series
-    juce::Colour metalHighlight(0xffaa2222);
-    juce::Colour metalShadow(0xff660000);
+    // Silver/aluminum metal body like real RC-1
+    juce::Colour metalBase(0xffcccccc);      // Light aluminum
+    juce::Colour metalHighlight(0xffeeeeee); // Bright highlight
+    juce::Colour metalShadow(0xff999999);    // Darker shadow
     
-    // Background gradient
+    // Main brushed metal gradient
     juce::ColourGradient metalGradient(metalHighlight, bounds.getX(), bounds.getY(),
                                        metalShadow, bounds.getRight(), bounds.getBottom(), false);
     g.setGradientFill(metalGradient);
-    g.fillRoundedRectangle(bounds, 10.0f);
+    g.fillRoundedRectangle(bounds, 8.0f);
     
-    // Edge bevel effect
-    g.setColour(metalHighlight.withAlpha(0.3f));
-    g.drawRoundedRectangle(bounds.reduced(1.0f), 10.0f, 2.0f);
+    // Brushed metal texture effect
+    for (int i = 0; i < getHeight(); i += 2)
+    {
+        float alpha = 0.05f + (float)(i % 4) * 0.01f;
+        g.setColour(metalHighlight.withAlpha(alpha));
+        g.drawHorizontalLine(i, bounds.getX(), bounds.getRight());
+    }
     
-    g.setColour(metalShadow);
-    g.drawRoundedRectangle(bounds, 10.0f, 3.0f);
+    // Edge bevel effect (more subtle)
+    g.setColour(metalHighlight.withAlpha(0.6f));
+    g.drawRoundedRectangle(bounds.reduced(1.0f), 8.0f, 1.0f);
     
-    // Screws in corners (Boss pedal detail)
-    g.setColour(juce::Colour(0xff333333));
-    int screwSize = 8;
-    g.fillEllipse(10, 10, screwSize, screwSize);
-    g.fillEllipse(getWidth() - 10 - screwSize, 10, screwSize, screwSize);
-    g.fillEllipse(10, getHeight() - 10 - screwSize, screwSize, screwSize);
-    g.fillEllipse(getWidth() - 10 - screwSize, getHeight() - 10 - screwSize, screwSize, screwSize);
+    g.setColour(metalShadow.withAlpha(0.7f));
+    g.drawRoundedRectangle(bounds, 8.0f, 2.0f);
+    
+    // Boss-style rubber feet (black circles in corners)
+    g.setColour(juce::Colour(0xff222222));
+    int footSize = 12;
+    g.fillEllipse(15, getHeight() - 25, footSize, footSize);
+    g.fillEllipse(getWidth() - 15 - footSize, getHeight() - 25, footSize, footSize);
+    
+    // Screws (smaller, more realistic)
+    g.setColour(juce::Colour(0xff666666));
+    int screwSize = 6;
+    g.fillEllipse(15, 15, screwSize, screwSize);
+    g.fillEllipse(getWidth() - 15 - screwSize, 15, screwSize, screwSize);
+    
+    // Screw cross pattern
+    g.setColour(juce::Colour(0xff444444));
+    g.drawLine(18, 15, 18, 21, 1.0f);
+    g.drawLine(15, 18, 21, 18, 1.0f);
+    g.drawLine(getWidth() - 18, 15, getWidth() - 18, 21, 1.0f);
+    g.drawLine(getWidth() - 21, 18, getWidth() - 15, 18, 1.0f);
+}
+
+void PedalComponent::paintDigitalDisplay(juce::Graphics& g, juce::Rectangle<int> bounds)
+{
+    // Digital display background (like ytLooper extension)
+    g.setColour(juce::Colour(0xff000000)); // Black background
+    g.fillRoundedRectangle(bounds.toFloat(), 3.0f);
+    
+    // Digital display border
+    g.setColour(juce::Colour(0xff333333)); // Dark gray border
+    g.drawRoundedRectangle(bounds.toFloat(), 3.0f, 2.0f);
+    
+    // Inner shadow effect
+    g.setColour(juce::Colour(0xff111111));
+    g.fillRoundedRectangle(bounds.reduced(3).toFloat(), 2.0f);
+    
+    // Subtle green glow around the display
+    g.setColour(juce::Colour(0xff00ff00).withAlpha(0.1f));
+    g.fillRoundedRectangle(bounds.expanded(2).toFloat(), 5.0f);
 }
 
 void PedalComponent::paintLED(juce::Graphics& g, juce::Rectangle<int> bounds, juce::Colour color, bool isOn)
