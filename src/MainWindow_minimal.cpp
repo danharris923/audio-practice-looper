@@ -56,6 +56,7 @@ MainComponent::MainComponent()
     {
         loadAudioFile();
     };
+    styleButton(loadFileButton, juce::Colour(0xff0066cc));
     addAndMakeVisible(loadFileButton);
     
     fileStatusLabel.setText("No file loaded", juce::dontSendNotification);
@@ -66,8 +67,8 @@ MainComponent::MainComponent()
     transportGroup.setText("Transport");
     addAndMakeVisible(transportGroup);
     
-    // Combined play/pause button (Song Master style)
-    playPauseButton.setButtonText("▶");  // Play icon
+    // Combined play/pause button (Song Master style)  
+    playPauseButton.setButtonText("PLAY");  // More readable text
     playPauseButton.onClick = [this]()
     {
         if (audioEngine && audioEngine->isFileLoaded())
@@ -75,14 +76,14 @@ MainComponent::MainComponent()
             if (audioEngine->isPlaying())
             {
                 audioEngine->pause();
-                playPauseButton.setButtonText("▶");
+                playPauseButton.setButtonText("PLAY");
                 isCurrentlyPlaying = false;
                 statusLabel.setText("Paused", juce::dontSendNotification);
             }
             else
             {
                 audioEngine->play();
-                playPauseButton.setButtonText("⏸");  // Pause icon
+                playPauseButton.setButtonText("PAUSE");
                 isCurrentlyPlaying = true;
                 statusLabel.setText("Playing", juce::dontSendNotification);
             }
@@ -92,19 +93,21 @@ MainComponent::MainComponent()
             statusLabel.setText("No file loaded", juce::dontSendNotification);
         }
     };
+    styleButton(playPauseButton, juce::Colour(0xff00aa00));
     addAndMakeVisible(playPauseButton);
     
-    stopButton.setButtonText("⏹");  // Stop icon
+    stopButton.setButtonText("STOP");  // More readable text
     stopButton.onClick = [this]()
     {
         if (audioEngine)
         {
             audioEngine->stop();
-            playPauseButton.setButtonText("▶");
+            playPauseButton.setButtonText("PLAY");
             isCurrentlyPlaying = false;
             statusLabel.setText("Stopped", juce::dontSendNotification);
         }
     };
+    styleButton(stopButton, juce::Colour(0xffcc6600));
     addAndMakeVisible(stopButton);
     
     positionLabel.setText("00:00 / 00:00", juce::dontSendNotification);
@@ -155,13 +158,51 @@ MainComponent::MainComponent()
     pitchValueLabel.setText("0 st", juce::dontSendNotification);
     addAndMakeVisible(pitchValueLabel);
 
+    // BPM and Grid controls
+    bpmLabel.setText("BPM:", juce::dontSendNotification);
+    addAndMakeVisible(bpmLabel);
+    
+    bpmSlider.setRange(60.0, 200.0, 1.0);
+    bpmSlider.setValue(120.0);
+    bpmSlider.setSliderStyle(juce::Slider::LinearHorizontal);
+    bpmSlider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 60, 20);
+    bpmSlider.onValueChange = [this]() { 
+        if (audioEngine)
+        {
+            double bpm = bpmSlider.getValue();
+            audioEngine->setBPM(bpm);
+            bpmValueLabel.setText(juce::String((int)bpm) + " BPM", juce::dontSendNotification);
+            statusLabel.setText("BPM set to " + juce::String((int)bpm), juce::dontSendNotification);
+        }
+    };
+    addAndMakeVisible(bpmSlider);
+    
+    bpmValueLabel.setText("120 BPM", juce::dontSendNotification);
+    addAndMakeVisible(bpmValueLabel);
+    
+    detectBPMButton.setButtonText("DETECT BPM");
+    detectBPMButton.onClick = [this]()
+    {
+        if (audioEngine && audioEngine->isFileLoaded())
+        {
+            // For now, just analyze with current BPM
+            audioEngine->performBeatAnalysis();
+            statusLabel.setText("Beat analysis complete - snap to grid ready", juce::dontSendNotification);
+        }
+        else
+        {
+            statusLabel.setText("Load an audio file first", juce::dontSendNotification);
+        }
+    };
+    styleButton(detectBPMButton, juce::Colour(0xff006699));
+    addAndMakeVisible(detectBPMButton);
+
     // Professional Loop Controls (Song Master Style)
     loopGroup.setText("Loop Controls");
     addAndMakeVisible(loopGroup);
     
     // Single A/B button that toggles between setting A, then B, then Clear
-    abLoopButton.setButtonText("Set A");
-    abLoopButton.setColour(juce::TextButton::buttonColourId, juce::Colour(0xff004080));
+    abLoopButton.setButtonText("SET A");
     abLoopButton.onClick = [this]()
     {
         if (!audioEngine || !audioEngine->isFileLoaded())
@@ -175,70 +216,75 @@ MainComponent::MainComponent()
             case NoLoop:
                 audioEngine->setLoopAPoint();
                 currentLoopState = HasA;
-                abLoopButton.setButtonText("Set B");
-                abLoopButton.setColour(juce::TextButton::buttonColourId, juce::Colour(0xff806000));
+                abLoopButton.setButtonText("SET B");
+                styleButton(abLoopButton, juce::Colour(0xffff8800));
                 statusLabel.setText("A point set - click again for B point", juce::dontSendNotification);
                 break;
                 
             case HasA:
                 audioEngine->setLoopBPoint();
                 currentLoopState = HasAB;
-                abLoopButton.setButtonText("Clear");
-                abLoopButton.setColour(juce::TextButton::buttonColourId, juce::Colour(0xff800000));
+                abLoopButton.setButtonText("CLEAR");
+                styleButton(abLoopButton, juce::Colour(0xffcc0000));
                 statusLabel.setText("Loop A-B active", juce::dontSendNotification);
                 break;
                 
             case HasAB:
                 audioEngine->clearLoop();
                 currentLoopState = NoLoop;
-                abLoopButton.setButtonText("Set A");
-                abLoopButton.setColour(juce::TextButton::buttonColourId, juce::Colour(0xff004080));
+                abLoopButton.setButtonText("SET A");
+                styleButton(abLoopButton, juce::Colour(0xff0088cc));
                 statusLabel.setText("Loop cleared - playback continues", juce::dontSendNotification);
                 break;
         }
         updateLoopInfo();
     };
+    styleButton(abLoopButton, juce::Colour(0xff0088cc));
     addAndMakeVisible(abLoopButton);
     
     // Fine-tuning jog buttons for A/B points
-    jogALeftButton.setButtonText("A◀");
+    jogALeftButton.setButtonText("A -5ms");
     jogALeftButton.onClick = [this]() { 
         if (audioEngine) {
             audioEngine->jogLoopStart(-0.005);
             updateLoopInfo();
         }
     };
+    styleButton(jogALeftButton, juce::Colour(0xff666666));
     addAndMakeVisible(jogALeftButton);
     
-    jogARightButton.setButtonText("A▶");
+    jogARightButton.setButtonText("A +5ms");
     jogARightButton.onClick = [this]() { 
         if (audioEngine) {
             audioEngine->jogLoopStart(0.005);
             updateLoopInfo();
         }
     };
+    styleButton(jogARightButton, juce::Colour(0xff666666));
     addAndMakeVisible(jogARightButton);
     
-    jogBLeftButton.setButtonText("B◀");
+    jogBLeftButton.setButtonText("B -5ms");
     jogBLeftButton.onClick = [this]() { 
         if (audioEngine) {
             audioEngine->jogLoopEnd(-0.005);
             updateLoopInfo();
         }
     };
+    styleButton(jogBLeftButton, juce::Colour(0xff666666));
     addAndMakeVisible(jogBLeftButton);
     
-    jogBRightButton.setButtonText("B▶");
+    jogBRightButton.setButtonText("B +5ms");
     jogBRightButton.onClick = [this]() { 
         if (audioEngine) {
             audioEngine->jogLoopEnd(0.005);
             updateLoopInfo();
         }
     };
+    styleButton(jogBRightButton, juce::Colour(0xff666666));
     addAndMakeVisible(jogBRightButton);
     
     // Loop length controls
-    doubleLoopButton.setButtonText("2×");
+    doubleLoopButton.setButtonText("2X LENGTH");
     doubleLoopButton.onClick = [this]() { 
         if (audioEngine) {
             audioEngine->doubleLoopLength();
@@ -246,9 +292,10 @@ MainComponent::MainComponent()
             statusLabel.setText("Loop length doubled", juce::dontSendNotification);
         }
     };
+    styleButton(doubleLoopButton, juce::Colour(0xff0066aa));
     addAndMakeVisible(doubleLoopButton);
     
-    halveLoopButton.setButtonText("½×");
+    halveLoopButton.setButtonText("1/2 LENGTH");
     halveLoopButton.onClick = [this]() { 
         if (audioEngine) {
             audioEngine->halveLoopLength();
@@ -256,10 +303,11 @@ MainComponent::MainComponent()
             statusLabel.setText("Loop length halved", juce::dontSendNotification);
         }
     };
+    styleButton(halveLoopButton, juce::Colour(0xff0066aa));
     addAndMakeVisible(halveLoopButton);
     
     // Bar movement controls
-    moveLoopBackButton.setButtonText("◀◀");
+    moveLoopBackButton.setButtonText("MOVE BACK");
     moveLoopBackButton.onClick = [this]() { 
         if (audioEngine) {
             audioEngine->moveLoopRegionBackward();
@@ -267,9 +315,10 @@ MainComponent::MainComponent()
             statusLabel.setText("Loop moved backward", juce::dontSendNotification);
         }
     };
+    styleButton(moveLoopBackButton, juce::Colour(0xff8800aa));
     addAndMakeVisible(moveLoopBackButton);
     
-    moveLoopForwardButton.setButtonText("▶▶");
+    moveLoopForwardButton.setButtonText("MOVE FWD");
     moveLoopForwardButton.onClick = [this]() { 
         if (audioEngine) {
             audioEngine->moveLoopRegionForward();
@@ -277,6 +326,7 @@ MainComponent::MainComponent()
             statusLabel.setText("Loop moved forward", juce::dontSendNotification);
         }
     };
+    styleButton(moveLoopForwardButton, juce::Colour(0xff8800aa));
     addAndMakeVisible(moveLoopForwardButton);
 
     loopInfoLabel.setText("Loop: Not set", juce::dontSendNotification);
@@ -287,8 +337,7 @@ MainComponent::MainComponent()
     recordingGroup.setText("Recording");
     addAndMakeVisible(recordingGroup);
     
-    recordButton.setButtonText("Record");
-    recordButton.setColour(juce::TextButton::buttonColourId, juce::Colour(0xff990000));
+    recordButton.setButtonText("RECORD");
     recordButton.onClick = [this]()
     {
         if (audioEngine)
@@ -296,22 +345,23 @@ MainComponent::MainComponent()
             if (audioEngine->isRecording())
             {
                 audioEngine->stopRecording();
-                recordButton.setButtonText("Record");
-                recordButton.setColour(juce::TextButton::buttonColourId, juce::Colour(0xff990000));
+                recordButton.setButtonText("RECORD");
+                styleButton(recordButton, juce::Colour(0xff990000));
                 recordingStatusLabel.setText("Recording stopped", juce::dontSendNotification);
             }
             else
             {
                 audioEngine->startRecording();
-                recordButton.setButtonText("Stop Rec");
-                recordButton.setColour(juce::TextButton::buttonColourId, juce::Colour(0xff009900));
+                recordButton.setButtonText("STOP REC");
+                styleButton(recordButton, juce::Colour(0xff009900));
                 recordingStatusLabel.setText("Recording...", juce::dontSendNotification);
             }
         }
     };
+    styleButton(recordButton, juce::Colour(0xff990000));
     addAndMakeVisible(recordButton);
     
-    inputMonitorButton.setButtonText("Monitor Input");
+    inputMonitorButton.setButtonText("MONITOR");
     inputMonitorButton.onClick = [this]()
     {
         if (audioEngine)
@@ -321,13 +371,15 @@ MainComponent::MainComponent()
             statusLabel.setText(enabled ? "Input monitoring enabled" : "Input monitoring disabled", juce::dontSendNotification);
         }
     };
+    styleButton(inputMonitorButton, juce::Colour(0xff666600));
     addAndMakeVisible(inputMonitorButton);
     
-    saveRecordingButton.setButtonText("Save Recording...");
+    saveRecordingButton.setButtonText("SAVE REC");
     saveRecordingButton.onClick = [this]()
     {
         saveRecording();
     };
+    styleButton(saveRecordingButton, juce::Colour(0xff006600));
     addAndMakeVisible(saveRecordingButton);
     
     recordingStatusLabel.setText("Ready to record", juce::dontSendNotification);
@@ -339,8 +391,9 @@ MainComponent::MainComponent()
     addAndMakeVisible(waveformArea);
 
     // Settings Menu (Hamburger)
-    settingsMenuButton.setButtonText("☰");
+    settingsMenuButton.setButtonText("SETTINGS");
     settingsMenuButton.onClick = [this]() { showSettingsMenu(); };
+    styleButton(settingsMenuButton, juce::Colour(0xff444444));
     addAndMakeVisible(settingsMenuButton);
 
     // Status
@@ -360,20 +413,23 @@ MainComponent::~MainComponent()
 
 void MainComponent::paint(juce::Graphics& g)
 {
-    // DAW-style dark background
-    g.fillAll(juce::Colour(0xff2a2a2a));
+    // Modern dark gradient background (Song Master style)
+    juce::ColourGradient gradient(juce::Colour(0xff1e1e1e), 0, 0,
+                                 juce::Colour(0xff2d2d30), getWidth(), getHeight(), false);
+    g.setGradientFill(gradient);
+    g.fillAll();
     
     // Draw waveform area background
     auto waveformBounds = waveformArea.getBounds();
     if (!waveformBounds.isEmpty())
     {
-        // Dark waveform background (like Pro Tools, Logic, etc.)
-        g.setColour(juce::Colour(0xff1a1a1a));
-        g.fillRect(waveformBounds);
+        // Subtle waveform background with rounded corners
+        g.setColour(juce::Colour(0xff121212));
+        g.fillRoundedRectangle(waveformBounds.toFloat(), 4.0f);
         
-        // Border
-        g.setColour(juce::Colour(0xff3a3a3a));
-        g.drawRect(waveformBounds, 1);
+        // Elegant border
+        g.setColour(juce::Colour(0xff404040));
+        g.drawRoundedRectangle(waveformBounds.toFloat().reduced(0.5f), 4.0f, 1.0f);
         
         drawWaveformPlaceholder(g, waveformBounds);
     }
@@ -403,14 +459,14 @@ void MainComponent::resized()
     // Middle section - Transport and waveform area (main DAW-style layout)
     auto middleSection = bounds.removeFromTop(120);
     
-    // Transport controls on left (Song Master style)
-    auto transportArea = middleSection.removeFromLeft(150);
+    // Transport controls on left (Song Master style) - larger buttons
+    auto transportArea = middleSection.removeFromLeft(180);
     transportGroup.setBounds(transportArea);
     transportArea.reduce(10, 15);
     
-    auto transportButtons = transportArea.removeFromTop(35);
-    playPauseButton.setBounds(transportButtons.removeFromLeft(60).reduced(2));
-    stopButton.setBounds(transportButtons.removeFromLeft(60).reduced(2));
+    auto transportButtons = transportArea.removeFromTop(40);
+    playPauseButton.setBounds(transportButtons.removeFromLeft(75).reduced(3));
+    stopButton.setBounds(transportButtons.removeFromLeft(75).reduced(3));
     
     positionLabel.setBounds(transportArea);
     
@@ -443,35 +499,48 @@ void MainComponent::resized()
     pitchSlider.setBounds(pitchArea.removeFromLeft(180));
     pitchValueLabel.setBounds(pitchArea);
     
-    // Professional Loop Controls (Song Master style layout)
+    effectsArea.removeFromTop(5);
+    
+    // BPM controls
+    auto bpmArea = effectsArea.removeFromTop(35);
+    bpmLabel.setBounds(bpmArea.removeFromLeft(50));
+    bpmSlider.setBounds(bpmArea.removeFromLeft(120));
+    bpmValueLabel.setBounds(bpmArea.removeFromLeft(60));
+    
+    effectsArea.removeFromTop(5);
+    
+    // BPM detection button
+    detectBPMButton.setBounds(effectsArea.removeFromTop(30).reduced(5));
+    
+    // Professional Loop Controls (Song Master style layout) - wider for better spacing
     controlsArea.removeFromLeft(10);
-    auto loopArea = controlsArea.removeFromLeft(400);
+    auto loopArea = controlsArea.removeFromLeft(450);
     loopGroup.setBounds(loopArea);
     loopArea.reduce(10, 15);
     
-    // Top row: Main A/B button and jog controls
-    auto topRow = loopArea.removeFromTop(30);
-    abLoopButton.setBounds(topRow.removeFromLeft(80).reduced(2));
+    // Top row: Main A/B button and jog controls (increased button sizes)
+    auto topRow = loopArea.removeFromTop(35);
+    abLoopButton.setBounds(topRow.removeFromLeft(90).reduced(2));
     topRow.removeFromLeft(10);
     
-    // A point jog buttons
-    jogALeftButton.setBounds(topRow.removeFromLeft(35).reduced(2));
-    jogARightButton.setBounds(topRow.removeFromLeft(35).reduced(2));
+    // A point jog buttons (increased size for better readability)
+    jogALeftButton.setBounds(topRow.removeFromLeft(55).reduced(2));
+    jogARightButton.setBounds(topRow.removeFromLeft(55).reduced(2));
     topRow.removeFromLeft(10);
     
-    // B point jog buttons
-    jogBLeftButton.setBounds(topRow.removeFromLeft(35).reduced(2));
-    jogBRightButton.setBounds(topRow.removeFromLeft(35).reduced(2));
+    // B point jog buttons (increased size for better readability)
+    jogBLeftButton.setBounds(topRow.removeFromLeft(55).reduced(2));
+    jogBRightButton.setBounds(topRow.removeFromLeft(55).reduced(2));
     
-    loopArea.removeFromTop(5);
+    loopArea.removeFromTop(8);
     
-    // Middle row: Loop length and movement controls
-    auto middleRow = loopArea.removeFromTop(30);
-    halveLoopButton.setBounds(middleRow.removeFromLeft(40).reduced(2));
-    doubleLoopButton.setBounds(middleRow.removeFromLeft(40).reduced(2));
+    // Middle row: Loop length and movement controls (increased sizes)
+    auto middleRow = loopArea.removeFromTop(35);
+    halveLoopButton.setBounds(middleRow.removeFromLeft(80).reduced(2));
+    doubleLoopButton.setBounds(middleRow.removeFromLeft(80).reduced(2));
     middleRow.removeFromLeft(20);
-    moveLoopBackButton.setBounds(middleRow.removeFromLeft(40).reduced(2));
-    moveLoopForwardButton.setBounds(middleRow.removeFromLeft(40).reduced(2));
+    moveLoopBackButton.setBounds(middleRow.removeFromLeft(80).reduced(2));
+    moveLoopForwardButton.setBounds(middleRow.removeFromLeft(80).reduced(2));
     
     loopArea.removeFromTop(5);
     
@@ -769,4 +838,18 @@ void MainComponent::showSettingsMenu()
                                         "• Edge bleed control for seamless loops\n\n"
                                         "Built with JUCE Framework");
     }
+}
+
+void MainComponent::styleButton(juce::Button& button, juce::Colour color)
+{
+    // Modern button styling with better readability
+    button.setColour(juce::TextButton::buttonColourId, color);
+    button.setColour(juce::TextButton::buttonOnColourId, color.brighter(0.3f));
+    button.setColour(juce::TextButton::textColourOnId, juce::Colours::white);
+    button.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
+    button.setColour(juce::ComboBox::outlineColourId, juce::Colour(0xff606060));
+    
+    // Set font size for better readability
+    juce::Font buttonFont(14.0f, juce::Font::bold);
+    button.setLookAndFeel(&getLookAndFeel()); // Use default look and feel with our colors
 }

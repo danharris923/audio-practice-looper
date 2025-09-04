@@ -55,6 +55,12 @@ private:
     juce::Slider pitchSlider;
     juce::Label pitchValueLabel;
     
+    // BPM and Grid controls
+    juce::Label bpmLabel;
+    juce::Slider bpmSlider;
+    juce::Label bpmValueLabel;
+    juce::TextButton detectBPMButton;
+    
     // Advanced Loop controls (Song Master style)
     juce::GroupComponent loopGroup;
     juce::TextButton abLoopButton;        // Single A/B toggle button
@@ -108,6 +114,7 @@ private:
     // Advanced loop control helpers
     void updateABButtonState();
     void showSettingsMenu();
+    void styleButton(juce::Button& button, juce::Colour color = juce::Colour(0xff404040));
     
     // State tracking
     enum LoopState { NoLoop, HasA, HasAB };

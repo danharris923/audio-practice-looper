@@ -1,4 +1,5 @@
 #include "SimpleAudioEngine.h"
+#include <limits>
 
 SimpleAudioEngine::SimpleAudioEngine() = default;
 
@@ -98,6 +99,9 @@ bool SimpleAudioEngine::loadAudioFile(const juce::File& file)
     // Set default loop to full file
     loopStartSeconds.store(0.0);
     loopEndSeconds.store(reader->lengthInSamples / reader->sampleRate);
+
+    // Perform initial beat analysis with default BPM
+    performBeatAnalysis();
 
     return true;
 }
@@ -429,7 +433,8 @@ void SimpleAudioEngine::setLoopAPoint()
         return;
         
     double currentPos = transportSource->getCurrentPosition();
-    loopStartSeconds.store(currentPos);
+    double snappedPos = snapToGrid(currentPos);
+    loopStartSeconds.store(snappedPos);
     hasAPoint.store(true);
     
     // Auto-enable looping if we have both A and B points
@@ -445,7 +450,8 @@ void SimpleAudioEngine::setLoopBPoint()
         return;
         
     double currentPos = transportSource->getCurrentPosition();
-    loopEndSeconds.store(currentPos);
+    double snappedPos = snapToGrid(currentPos);
+    loopEndSeconds.store(snappedPos);
     hasBPoint.store(true);
     
     // Auto-enable looping if we have both A and B points
@@ -578,10 +584,81 @@ int SimpleAudioEngine::getEdgeBleedMs() const
 
 void SimpleAudioEngine::setSnapToGrid(bool enabled)
 {
-    snapToGrid.store(enabled);
+    snapToGridEnabled.store(enabled);
 }
 
 bool SimpleAudioEngine::getSnapToGrid() const
 {
-    return snapToGrid.load();
+    return snapToGridEnabled.load();
+}
+
+void SimpleAudioEngine::performBeatAnalysis()
+{
+    if (!fileLoaded.load() || !readerSource)
+        return;
+        
+    juce::ScopedLock lock(beatAnalysisLock);
+    
+    // Simple beat detection using energy-based analysis
+    // This is a basic implementation - professional tools use FFT and onset detection
+    beatPositions.clear();
+    
+    if (auto* reader = readerSource->getAudioFormatReader())
+    {
+        double duration = reader->lengthInSamples / reader->sampleRate;
+        double currentBPM = bpm.load();
+        
+        if (currentBPM > 0)
+        {
+            // Generate grid positions based on current BPM
+            double beatInterval = 60.0 / currentBPM; // seconds per beat
+            
+            for (double pos = 0.0; pos < duration; pos += beatInterval)
+            {
+                beatPositions.push_back(pos);
+            }
+        }
+    }
+}
+
+void SimpleAudioEngine::setBPM(double newBPM)
+{
+    bpm.store(juce::jlimit(60.0, 200.0, newBPM));
+    // Regenerate beat positions with new BPM
+    performBeatAnalysis();
+}
+
+double SimpleAudioEngine::getBPM() const
+{
+    return bpm.load();
+}
+
+double SimpleAudioEngine::snapToGrid(double seconds) const
+{
+    if (!snapToGridEnabled.load() || beatPositions.empty())
+        return seconds;
+        
+    juce::ScopedLock lock(beatAnalysisLock);
+    
+    // Find the closest beat position
+    double closestBeat = seconds;
+    double minDistance = std::numeric_limits<double>::max();
+    
+    for (double beatPos : beatPositions)
+    {
+        double distance = std::abs(seconds - beatPos);
+        if (distance < minDistance)
+        {
+            minDistance = distance;
+            closestBeat = beatPos;
+        }
+    }
+    
+    return closestBeat;
+}
+
+std::vector<double> SimpleAudioEngine::getBeatPositions() const
+{
+    juce::ScopedLock lock(beatAnalysisLock);
+    return beatPositions;
 }

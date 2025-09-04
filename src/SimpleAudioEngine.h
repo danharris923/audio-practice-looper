@@ -58,6 +58,13 @@ public:
     int getEdgeBleedMs() const;
     void setSnapToGrid(bool enabled);
     bool getSnapToGrid() const;
+    
+    // Beat detection and grid snapping
+    void performBeatAnalysis();
+    void setBPM(double bpm);
+    double getBPM() const;
+    double snapToGrid(double seconds) const;
+    std::vector<double> getBeatPositions() const;
 
     // Tempo/Pitch (placeholders for now - would need external libs for real implementation)
     void setTempoRatio(float ratio);
@@ -108,7 +115,7 @@ private:
     
     // Advanced loop settings
     std::atomic<int> edgeBleedMs{5};  // Default 5ms edge bleed
-    std::atomic<bool> snapToGrid{false};
+    std::atomic<bool> snapToGridEnabled{false};
     
     // Tempo/Pitch placeholders
     std::atomic<float> tempoRatio{1.0f};
@@ -123,6 +130,11 @@ private:
     std::unique_ptr<juce::AudioSampleBuffer> recordingBuffer;
     std::atomic<int> recordingPosition{0};
     juce::CriticalSection recordingLock;
+    
+    // Beat detection and analysis
+    std::atomic<double> bpm{120.0};
+    std::vector<double> beatPositions;
+    juce::CriticalSection beatAnalysisLock;
     
     void setupAudioSources();
     void checkLoopPosition();
