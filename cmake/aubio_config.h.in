@@ -1,0 +1,32 @@
+#ifndef AUBIO_CONFIG_H
+#define AUBIO_CONFIG_H
+
+/* Basic aubio configuration for CMake build */
+
+#define AUBIO_UNSTABLE 1
+#define HAVE_STDLIB_H 1
+#define HAVE_STDIO_H 1
+#define HAVE_MATH_H 1
+#define HAVE_STRING_H 1
+#define HAVE_LIMITS_H 1
+
+#ifdef _WIN32
+#define HAVE_WIN_HACKS 1
+#else
+#define HAVE_UNISTD_H 1
+#endif
+
+/* Use FFTW3 if available, otherwise use built-in FFT */
+#cmakedefine HAVE_FFTW3
+
+/* Audio format support */
+#define HAVE_SNDFILE 0
+#define HAVE_AVCODEC 0
+#define HAVE_LIBAV 0
+
+/* Disable complex dependencies for this build */
+#define HAVE_JACK 0
+#define HAVE_ALSA 0
+#define HAVE_COREAUDIO 0
+
+#endif /* AUBIO_CONFIG_H */

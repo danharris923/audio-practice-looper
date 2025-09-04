@@ -1,0 +1,123 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-22.04
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+    
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          cmake \
+          ninja-build \
+          libavcodec-dev \
+          libavformat-dev \
+          libavutil-dev \
+          libswresample-dev \
+          libfftw3-dev \
+          libasound2-dev \
+          libpulse-dev \
+          libx11-dev \
+          libxext-dev \
+          libxrandr-dev \
+          libxss-dev \
+          libxinerama-dev \
+          libxcursor-dev \
+          pkg-config
+    
+    - name: Configure CMake
+      run: |
+        cmake -B build -G Ninja \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_CXX_COMPILER=g++ \
+          -DCMAKE_C_COMPILER=gcc
+    
+    - name: Build
+      run: cmake --build build --parallel
+    
+    - name: Run tests
+      run: |
+        cd build
+        ctest --output-on-failure --parallel
+    
+    - name: Check format
+      run: |
+        find src -name "*.cpp" -o -name "*.h" | xargs clang-format --dry-run --Werror
+    
+  build-windows:
+    runs-on: windows-2022
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+    
+    - name: Setup MSVC
+      uses: microsoft/setup-msbuild@v1.3
+      
+    - name: Install vcpkg
+      uses: lukka/run-vcpkg@v11
+      with:
+        vcpkgDirectory: '${{ github.workspace }}/vcpkg'
+        vcpkgGitCommitId: 'a7b6122f6b6504d16d96117336a0562693579933'
+        vcpkgJsonGlob: 'vcpkg.json'
+        
+    - name: Install FFmpeg via vcpkg
+      run: |
+        vcpkg install ffmpeg:x64-windows
+        
+    - name: Configure CMake
+      run: |
+        cmake -B build -G "Visual Studio 17 2022" -A x64 ^
+          -DCMAKE_BUILD_TYPE=Release ^
+          -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake"
+    
+    - name: Build
+      run: cmake --build build --config Release --parallel
+    
+    - name: Run tests
+      run: |
+        cd build
+        ctest --output-on-failure --parallel --config Release
+        
+  static-analysis:
+    runs-on: ubuntu-22.04
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y clang-tidy cppcheck
+        
+    - name: Run cppcheck
+      run: |
+        cppcheck --enable=all --error-exitcode=1 \
+          --suppress=missingIncludeSystem \
+          --suppress=unusedFunction \
+          src/
+          
+    - name: Setup compilation database
+      run: |
+        cmake -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+        
+    - name: Run clang-tidy
+      run: |
+        find src -name "*.cpp" | xargs clang-tidy \
+          -p build \
+          --warnings-as-errors='*'

@@ -1,0 +1,40 @@
+GNU GENERAL PUBLIC LICENSE
+Version 3, 29 June 2007
+
+Copyright (C) 2024 Audio Practice Looper Project
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+--------------------------------------------------------------------------------
+
+This project uses the following GPL-compatible libraries:
+
+1. JUCE Framework - GPL v3 / Commercial License
+   Copyright (c) 2022 - Raw Material Software Limited
+   https://github.com/juce-framework/JUCE
+
+2. Rubber Band Audio Time Stretcher Library - GPL v2 or later
+   Copyright (c) 2007-2024 Particular Programs Ltd.
+   https://github.com/breakfastquay/rubberband
+
+3. aubio - GPL v3
+   Copyright (c) 2003-2024 Paul Brossier
+   https://github.com/aubio/aubio
+
+4. FFmpeg - GPL v2 or later / LGPL v2.1 or later
+   Copyright (c) 2000-2024 the FFmpeg developers
+   https://ffmpeg.org/
+
+The full text of the GNU General Public License is available at:
+https://www.gnu.org/licenses/gpl-3.0.html
